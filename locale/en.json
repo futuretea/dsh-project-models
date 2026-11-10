@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Project models",
+    "description": "Give each project its own main-agent and subagent models."
+  }
+}
