@@ -3,7 +3,7 @@
  * @module dsh-project-models
  */
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { Agent, ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-config-editor'
 import type {} from '@deepseek-ai/dsh-settings'
 import { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
@@ -60,17 +60,17 @@ export async function validateRoute(ctx: Context, route: Route): Promise<string 
     : `${route.provider}/${route.model} supports reasoning efforts: ${efforts.join(', ')}.`
 }
 
-function sameRoute(a: { provider: string; model: string }, b: { provider: string; model: string }): boolean {
-  return a.provider === b.provider && a.model === b.model
+function sameRoute(a: Readonly<ModelSelection>, b: Readonly<ModelSelection>): boolean {
+  return a.provider === b.provider && a.model === b.model && a.reasoningEffort === b.reasoningEffort
 }
 
 /**
  * Select the project route for a freshly started agent. Resumed Sessions keep
  * their recorded choice. A subagent is only re-routed while it still carries
- * its parent's route, so an explicit child model from the delegation call or
- * the delegation tool's configuration wins.
+ * its parent's exact route, so an explicit child model or reasoning effort
+ * from the delegation call or the delegation tool's configuration wins.
  */
-function routeNewAgent(ctx: Context, rules: readonly ProjectRule[], agent: Agent): void {
+export function routeNewAgent(ctx: Context, rules: readonly ProjectRule[], agent: Agent): void {
   const dir = rootDir(ctx, agent.session)
   const rule = dir === undefined ? undefined : findRule(rules, dir)
   if (rule === undefined) return

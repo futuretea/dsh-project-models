@@ -54,7 +54,7 @@ Web UI 侧栏 **插件 → 已安装插件 → dsh-project-models**，页面下�
 
 - 按会话的根目录匹配项目：取路径最长的那条规则；路径支持 `~`，符号链接会解析成真实路径。sub-agent 按它所属的顶层会话的目录匹配。
 - 只作用于新建的会话和 sub-agent；恢复的会话保留它已记录的模型。
-- sub-agent 的模型优先级：委派时显式指定的模型（委派调用参数或 `tool-subagent` 的 `agentOptions`）> `sub` > dsh 默认（沿用父 agent）。
+- sub-agent 的模型优先级：委派时显式指定的模型或推理强度（委派调用参数或 `tool-subagent` 的 `agentOptions`）> `sub` > dsh 默认（沿用父 agent）。
 - 没写 `main` 时用 dsh 的默认模型；没匹配到任何项目时插件什么都不做。
 
 ## 已知限制

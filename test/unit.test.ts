@@ -4,8 +4,11 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import type { Agent, ModelSelection } from '@deepseek-ai/dsh-agent'
+import type { Context } from '@deepseek-ai/cordis'
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { runCommand, parseCommand, type CommandDeps } from '../src/command.ts'
 import { findRule, normalizeDir, parseRoute, type ProjectRule } from '../src/config.ts'
+import { routeNewAgent } from '../src/index.ts'
 
 const rule = (path: string, extra: Partial<ProjectRule> = {}): ProjectRule => ({ path, ...extra })
 
@@ -57,7 +60,7 @@ function fakeAgent(current: ModelSelection | undefined, origin?: 'subagent'): Ag
   const selected: ModelSelection[] = []
   return {
     selected,
-    session: { header: { cwd: '/work/a', ...origin === undefined ? {} : { origin } } },
+    session: { header: { cwd: '/work/a', ...origin === undefined ? {} : { origin, parentSession: 'parent' } } },
     model: { current: () => current, select: (selection: ModelSelection) => { selected.push(selection) } },
   } as unknown as Agent & { selected: ModelSelection[] }
 }
@@ -99,6 +102,24 @@ test('edits target the matched rule; unset and forget remove settings', async ()
   assert.deepEqual(deps.saved.at(-1), [rule('/other'), rule('/work', { main: { provider: 'a', model: 'm' } })])
   await runCommand(deps, fakeAgent(undefined), 'forget')
   assert.deepEqual(deps.saved.at(-1), [rule('/other')])
+})
+
+test('a subagent carrying its parent\'s exact route is re-routed; an explicit effort is not', () => {
+  const rules = [rule('/work', { sub: { provider: 'sub-p', model: 'sub-m' } })]
+  const parentSelection: ModelSelection = {
+    provider: 'main-p', model: 'main-m', reasoningEffort: ReasoningEffortId('low'),
+  }
+  const parent = fakeAgent(parentSelection)
+  const ctx = {
+    sessions: { get: () => undefined },
+    agents: { get: () => parent },
+  } as unknown as Context
+  const inherited = fakeAgent(parentSelection, 'subagent')
+  routeNewAgent(ctx, rules, inherited)
+  assert.deepEqual(inherited.selected, [{ provider: 'sub-p', model: 'sub-m' }])
+  const explicit = fakeAgent({ ...parentSelection, reasoningEffort: ReasoningEffortId('high') }, 'subagent')
+  routeNewAgent(ctx, rules, explicit)
+  assert.deepEqual(explicit.selected, [])
 })
 
 test('a failed validation or save is reported and nothing is selected', async () => {
